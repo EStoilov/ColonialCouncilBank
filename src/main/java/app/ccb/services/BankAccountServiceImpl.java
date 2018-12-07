@@ -1,23 +1,40 @@
 package app.ccb.services;
 
+import app.ccb.domain.dtos.bankaccount.BankAccountImportDto;
+import app.ccb.domain.dtos.bankaccount.BankAccountImportRootDto;
+import app.ccb.domain.entities.BankAccount;
+import app.ccb.domain.entities.Client;
 import app.ccb.repositories.BankAccountRepository;
+import app.ccb.repositories.ClientRepository;
 import app.ccb.util.Constants;
 import app.ccb.util.FileUtil;
+import app.ccb.util.ValidationUtil;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Unmarshaller;
+import java.io.File;
 import java.io.IOException;
 
 @Service
 public class BankAccountServiceImpl implements BankAccountService {
     
     private final BankAccountRepository bankAccountRepository;
-    private final FileUtil fileUtil; 
+    private final ClientRepository clientRepository;
+    private final FileUtil fileUtil;
+    private final ValidationUtil validationUtil;
+    private final ModelMapper modelMapper;
 
     @Autowired
-    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, FileUtil fileUtil) {
+    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, ClientRepository clientRepository, FileUtil fileUtil, ValidationUtil validationUtil, ModelMapper modelMapper) {
         this.bankAccountRepository = bankAccountRepository;
+        this.clientRepository = clientRepository;
         this.fileUtil = fileUtil;
+        this.validationUtil = validationUtil;
+        this.modelMapper = modelMapper;
     }
 
     @Override
@@ -27,12 +44,44 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     @Override
     public String readBankAccountsXmlFile() throws IOException {
-        return this.fileUtil.readFile(Constants.BANK_ACCOUNTS_PATH_FILA);
+        return this.fileUtil.readFile(Constants.BANK_ACCOUNTS_FILE_PATH);
     }
 
     @Override
-    public String importBankAccounts() {
-        // TODO : Implement Me
-        return null;
+    public String importBankAccounts() throws JAXBException {
+        
+        StringBuilder importResult = new StringBuilder();
+        
+        JAXBContext context = JAXBContext.newInstance(BankAccountImportRootDto.class);
+        Unmarshaller unmarshaller = context.createUnmarshaller();
+        
+        BankAccountImportRootDto bankAccountImportRootDto = (BankAccountImportRootDto) unmarshaller.
+                unmarshal(new File(Constants.BANK_ACCOUNTS_FILE_PATH));
+
+        for (BankAccountImportDto bankAccountImportDto : bankAccountImportRootDto.getBankAccountImportDtos()) {
+            if (!validationUtil.isValid(bankAccountImportDto)) {
+                importResult.append("Error: Incorrect Data!").append(System.lineSeparator());
+
+                continue;
+            }
+
+            Client clientEntity = this.clientRepository.findByFullName(bankAccountImportDto.getClient())
+                    .orElse(null);
+
+            if (clientEntity == null) {
+                importResult.append("Error: Incorrect Data!").append(System.lineSeparator());
+
+                continue;
+            }
+
+            BankAccount bankAccountEntity = this.modelMapper.map(bankAccountImportDto, BankAccount.class);
+            bankAccountEntity.setClient(clientEntity);
+
+            this.bankAccountRepository.saveAndFlush(bankAccountEntity);
+
+            importResult.append(String.format("Successfully imported Bank Account - %s", bankAccountEntity.getAccountNumber())).append(System.lineSeparator());
+        }
+
+        return importResult.toString().trim();
     }
 }

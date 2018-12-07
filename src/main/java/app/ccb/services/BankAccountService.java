@@ -1,5 +1,6 @@
 package app.ccb.services;
 
+import javax.xml.bind.JAXBException;
 import java.io.IOException;
 public interface BankAccountService {
 
@@ -7,5 +8,5 @@ public interface BankAccountService {
 
     String readBankAccountsXmlFile() throws IOException;
 
-    String importBankAccounts();
+    String importBankAccounts() throws JAXBException;
 }

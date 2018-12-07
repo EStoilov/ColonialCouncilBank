@@ -2,6 +2,7 @@ package app.ccb.services;
 
 import app.ccb.domain.dtos.EmployeeImportDto;
 import app.ccb.domain.entities.Branch;
+import app.ccb.domain.entities.Client;
 import app.ccb.domain.entities.Employee;
 import app.ccb.repositories.BranchRepository;
 import app.ccb.repositories.EmployeeRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -80,7 +82,24 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public String exportTopEmployees() {
-        // TODO : Implement Me
-        return null;
+
+        List<Employee> employeeEntities = this.employeeRepository
+                .extractTopEmployees();
+
+        StringBuilder exportResult = new StringBuilder();
+        for (Employee employeeEntity : employeeEntities) {
+            exportResult.append("Full Name: ").append(String.format("%s %s", employeeEntity.getFirstName(), employeeEntity.getLastName())).append(System.lineSeparator());
+            exportResult.append("Salary: ").append(String.format("%.2f", employeeEntity.getSalary())).append(System.lineSeparator());
+            exportResult.append("Started On: ").append(String.valueOf(employeeEntity.getStartedOn())).append(System.lineSeparator());
+            exportResult.append("Clients:").append(System.lineSeparator());
+
+            for (Client clientEntity : employeeEntity.getClients()) {
+                exportResult.append(String.format(" %s", clientEntity.getFullName())).append(System.lineSeparator());
+            }
+
+            exportResult.append(System.lineSeparator());
+        }
+
+        return exportResult.toString().trim();
     }
 }

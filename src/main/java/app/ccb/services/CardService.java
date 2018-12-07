@@ -1,5 +1,6 @@
 package app.ccb.services;
 
+import javax.xml.bind.JAXBException;
 import java.io.IOException;
 public interface CardService {
 
@@ -7,5 +8,5 @@ public interface CardService {
 
     String readCardsXmlFile() throws IOException;
 
-    String importCards();
+    String importCards() throws JAXBException;
 }
